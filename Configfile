@@ -1,0 +1,16 @@
+LANGUAGES += c++
+COMPILEOPTS += -std=c++11
+COMPILEOPTS += -Wall
+COMPILEOPTS += -Wextra
+COMPILEOPTS += -pedantic
+COMPILEOPTS += -Werror
+
+LANGUAGES   += c++
+COMPILEOPTS += -O3
+COMPILEOPTS += -march=native
+LINKOPTS    += -Wl,-O1
+COMPILEOPTS += -ftree-vectorize
+COMPILEOPTS += -funroll-all-loops
+
+BINARIES    += matmul
+SOURCES     += matmul.c++
