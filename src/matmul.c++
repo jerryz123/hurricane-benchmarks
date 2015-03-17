@@ -48,6 +48,13 @@
 #define VECTOR_ALIGNMENT 256
 #endif
 
+/* The number of C registers to use when register blocking -- the same
+ * number of scalar A registers will end up being used (though this is
+ * free on x86), but a single B register will still be used. */
+#ifndef REGISTER_BLOCK
+#define REGISTER_BLOCK 8
+#endif
+
 /* I have some explicit SIMD code, this makes sure that abides by
  * the VECTOR_LENGTH constant. */
 typedef double vector __attribute__(( vector_size(VECTOR_LENGTH * 8) ));
@@ -159,6 +166,31 @@ void matmul_simd_j(double * __restrict__ C,
     }
 }
 
+__attribute__((noinline))
+void matmul_regblk(double * __restrict__ C,
+                   const double * __restrict__ A,
+                   const double * __restrict__ B)
+{
+    for (auto i = 0*N; i < N; i += REGISTER_BLOCK) {
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH) {
+            vector cC[REGISTER_BLOCK];
+            for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b)
+                cC[b] = vector PSIMD_INIT(VECTOR_LENGTH, 0);
+
+            for (auto k = 0*N; k < N; ++k) {
+                vector cB = *((vector*)(B + k*N + j));
+                for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b) {
+                    vector cA = PSIMD_INIT(VECTOR_LENGTH, A[(i+b)*N + k]);
+                    cC[b] += cA * cB;
+                }
+            }
+
+            for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b)
+                *((vector*)(C + (i+b)*N + j)) = cC[b];
+        }
+    }
+}
+
 void benchmark(const double *a, const double *b, double *fast,
                const double *gold,
                void (*func)(double *c, const double *a, const double *b),
@@ -223,6 +255,7 @@ int main(int argc __attribute__((unused)),
 
         benchmark(a, b, c, gold, &simple_matmul, "simple: ");
         benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
+        benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
     }
 
     return 0;
