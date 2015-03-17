@@ -34,8 +34,7 @@
 
 /* These parameters are used to tune the fast implementation and
  * therefor should be used by some sort of auto-tuner. */
-#define K_LOOP_UNROLL 4
-#define BLOCK_HORIZ 4
+#define BLOCK_VERT 4
 
 /* The simplest matrix multiplication implementation I can think of
  * that's reasonably performant -- note that GCC appears to vectorize
@@ -97,8 +96,8 @@ void fast_matmul(double * __restrict__ C,
     }
 }
 
-void benchmark(double *a, double *b,
-               double *fast, double *gold,
+void benchmark(const double *a, const double *b, double *fast,
+               const double *gold,
                void (*func)(double *c, const double *a, const double *b),
                const char *name)
 {
@@ -137,11 +136,11 @@ int main(int argc __attribute__((unused)),
 
     srand(0);
 
-    for (size_t iter = 0; iter < ITERATIONS; ++iter) {
-        for (size_t i = 0; i < N; ++i) {
-            for (size_t j = 0; j < N; ++j) {
-                a[i*N + j] = rand() + rand() / 1000.0;
-                b[i*N + j] = rand() + rand() / 1000.0;
+    for (auto iter = 0*ITERATIONS; iter < ITERATIONS; ++iter) {
+        for (auto i = 0*N; i < N; ++i) {
+            for (auto j = 0*N; j < N; ++j) {
+                a[i*N + j] = rand() / 1000.0;
+                b[i*N + j] = rand() / 1000.0;
             }
         }
 
