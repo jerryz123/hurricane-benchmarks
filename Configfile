@@ -17,6 +17,9 @@ LINKOPTS    += -g
 
 GENERATE    += ppp_repeat.h++
 
+BINARIES    += micro-vfmadd231pdMYY
+SOURCES     += micro-vfmadd231pdMYY.c++
+
 LANGUAGES   += c++
 COMPILER     = g++-4.8.3
 BINARIES    += matmul-gcc48
