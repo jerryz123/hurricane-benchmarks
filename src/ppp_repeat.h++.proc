@@ -1,0 +1,63 @@
+#!/bin/bash
+
+MAX_ITERATIONS=128
+
+if [[ "$1" == "--deps" ]]
+then
+    echo $0
+    exit 0
+fi
+
+if [[ "$1" == "--generate" ]]
+then
+    cat << "EOF"
+/*
+ * Copyright (C) 2015 Palmer Dabbelt
+ *   <palmer.dabbelt@eecs.berkeley.edu>
+ *
+ * This file is part of hurricane-benchmarks.
+ * 
+ * hurricane-benchmarks is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * hurricane-benchmarks is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with hurricane-benchmarks.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef PPP_REPEAT_H
+#define PPP_REPEAT_H
+
+#define PPP_CAT(A, B) __PPP__CAT(A, B)
+#define __PPP__CAT(A, B) A ## B
+
+#define PPPR(N,M,P) do { PPP_CAT(__PPP__REPEAT_, N(M,P)) } while (0)
+#define __PPP__REPEAT_0(M, P) M(0, P)
+#define __PPP__REPEAT_RECURSE_0(M, P) M(0, P)
+EOF
+
+    for i in $(seq 1 $(($MAX_ITERATIONS-1)))
+    do
+        imo=$((i-1))
+        cat <<EOF
+#define __PPP__REPEAT_RECURSE_$i(M, P) __PPP__REPEAT_RECURSE_$imo(M, P) M($i, P)
+#define __PPP__REPEAT_$i(M, P) __PPP__REPEAT_RECURSE_$imo(M, P)
+EOF
+    done
+
+    cat << "EOF"
+
+#endif
+EOF
+    
+    exit 0
+fi
+
+exit 1
+

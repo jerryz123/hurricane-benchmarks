@@ -10,7 +10,13 @@ COMPILEOPTS += -O3
 COMPILEOPTS += -march=native
 LINKOPTS    += -Wl,-O1
 COMPILEOPTS += -ftree-vectorize
-COMPILEOPTS += -funroll-all-loops
+COMPILEOPTS += -fno-inline
+
+LANGUAGES   += c++
+COMPILEOPTS += -g
+LINKOPTS    += -g
+
+GENERATE    += ppp_repeat.h++
 
 BINARIES    += matmul
 SOURCES     += matmul.c++
