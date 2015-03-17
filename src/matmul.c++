@@ -48,9 +48,11 @@
 #define VECTOR_ALIGNMENT 256
 #endif
 
-/* The number of C registers to use when register blocking -- the same
- * number of scalar A registers will end up being used (though this is
- * free on x86), but a single B register will still be used. */
+/* The number of C registers to use when register blocking on _regblk.
+ * This determines the number of A scalar registers used (though
+ * there's no reuse, so this maps to a single A register on Intel),
+ * while there is a single B register used (always).
+ */
 #ifndef REGISTER_BLOCK
 #define REGISTER_BLOCK 8
 #endif
@@ -185,7 +187,9 @@ void matmul_simd_j(double * __restrict__ C,
  * I believe the reason this isn't efficient is the fact that those
  * vbroadcast operations are sitting in there -- essentially this
  * means I can't get my 2 FLOPS per cycle from FMA, because the cycle
- * before I'm doing a 0-FLOP operation.
+ * before I'm doing a 0-FLOP operation.  It turns out that AVX doesn't
+ * actually support scalar-vector operations, so this appears to be as
+ * good as I can get without re-using that scalar.
  */
 __attribute__((noinline))
 void matmul_regblk(double * __restrict__ C,
