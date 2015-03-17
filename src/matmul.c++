@@ -99,7 +99,8 @@ void fast_matmul(double * __restrict__ C,
 
 void benchmark(double *a, double *b,
                double *fast, double *gold,
-               void (*func)(double *c, const double *a, const double *b))
+               void (*func)(double *c, const double *a, const double *b),
+               const char *name)
 {
 
     for (auto i = 0*WARMUP_COUNT; i < WARMUP_COUNT; ++i)
@@ -117,7 +118,7 @@ void benchmark(double *a, double *b,
 
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-        std::cout << "Fast:   " << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0) << "\n";
+        std::cout << name << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0) << "\n";
     }
 
     for (size_t i = 0; i < N*N; ++i)
@@ -146,8 +147,8 @@ int main(int argc __attribute__((unused)),
 
         simple_matmul(gold, a, b);
 
-        benchmark(a, b, c, gold, &simple_matmul);
-        benchmark(a, b, c, gold, &fast_matmul);
+        benchmark(a, b, c, gold, &simple_matmul, "Simple: ");
+        benchmark(a, b, c, gold, &fast_matmul,   "Fast:   ");
     }
 
     return 0;
