@@ -64,15 +64,15 @@ void simple_matmul(double * __restrict__ C,
 {
     for (auto i = 0*N; i < N; ++i) {
         for (auto j = 0*N; j < N; ++j) {
-            double c = 0;
+            double cC = 0;
 
             for (auto k = 0*N; k < N; ++k) {
-                double a = A[i*N + k];
-                double b = B[k*N + j];
-                c += a * b;
+                double cA = A[i*N + k];
+                double cB = B[k*N + j];
+                cC += cA * cB;
             }
 
-            C[i*N + j] = c;
+            C[i*N + j] = cC;
         }
     }
 }
@@ -83,15 +83,15 @@ void fast_matmul(double * __restrict__ C,
 {
     for (auto i = 0*N; i < N; ++i) {
         for (auto j = 0*N; j < N; ++j) {
-            double c = 0;
+            double cC = 0;
 
             for (auto k = 0*N; k < N; ++k) {
-                double a = A[i*N + k];
-                double b = B[k*N + j];
-                c += a * b;
+                double cA = A[i*N + k];
+                double cB = B[k*N + j];
+                cC += cA * cB;
             }
 
-            C[i*N + j] = c;
+            C[i*N + j] = cC;
         }
     }
 }
