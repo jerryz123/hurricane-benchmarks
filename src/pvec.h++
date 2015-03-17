@@ -18,38 +18,42 @@
  * along with hurricane-benchmarks.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdlib.h>
+
 #ifndef PVEC_HXX
 #define PVEC_HXX
 
 template<class T, int N> class pvec {
 private:
-    T _data[N];
+    struct array_type {
+        T data[N] __attribute__(( aligned(sizeof(T) * N) ));
+    };
+
+    struct array_type _data;
 
 public:
     pvec(const T& value) {
         for (auto i = 0*N; i < N; ++i)
-            _data[i] = value;
+            _data.data[i] = value;
     }
 
     pvec(const T *base) {
-        for (auto i = 0*N; i < N; ++i)
-            _data[i] = base[i];
+        *((struct array_type *)&_data) = *((struct array_type *)base);
     }
 
 public:
     const T& operator[](size_t i) const {
-        return _data[i];
+        return _data.data[i];
     }
 
     void operator+=(const pvec<T, N>& other) {
         for (auto i = 0*N; i < N; ++i)
-            _data[i] += other[i];
+            _data.data[i] += other[i];
     }
 
 public:
-    void store(T *base, size_t stride=1) {
-        for (auto i = 0*N; i < N; ++i)
-            base[i] = _data[i*stride];
+    void store(T *base) {
+        *((struct array_type *)base) = *((struct array_type *)&_data);
     }
 };
 
