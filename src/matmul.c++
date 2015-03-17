@@ -118,7 +118,7 @@ void benchmark(double *a, double *b,
 
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-        std::cout << name << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0) << "\n";
+        std::cout << name << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0 * 1e9) << "\n";
     }
 
     for (size_t i = 0; i < N*N; ++i)
