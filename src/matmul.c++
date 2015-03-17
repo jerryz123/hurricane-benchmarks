@@ -199,9 +199,9 @@ void matmul_regblk(double * __restrict__ C,
                 cC[b] = vector PSIMD_INIT(VECTOR_LENGTH, 0);
 
             for (auto k = 0*N; k < N; ++k) {
-                vector cB = *((vector*)(B + k*N + j));
                 for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b) {
                     vector cA = PSIMD_INIT(VECTOR_LENGTH, A[(i+b)*N + k]);
+                    vector cB = *((vector*)(B + k*N + j));
                     cC[b] += cA * cB;
                 }
             }
