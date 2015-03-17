@@ -37,7 +37,7 @@ then
 #define PPP_CAT(A, B) __PPP__CAT(A, B)
 #define __PPP__CAT(A, B) A ## B
 
-#define PPPR(N,M,P) do { PPP_CAT(__PPP__REPEAT_, N(M,P)) } while (0)
+#define PPPR(N,M,P) PPP_CAT(__PPP__REPEAT_, N(M,P))
 #define __PPP__REPEAT_0(M, P) M(0, P)
 #define __PPP__REPEAT_RECURSE_0(M, P) M(0, P)
 EOF
@@ -60,4 +60,3 @@ EOF
 fi
 
 exit 1
-

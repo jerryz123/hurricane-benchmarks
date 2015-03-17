@@ -23,6 +23,7 @@
 #include <iostream>
 #include <math.h>
 #include <valarray>
+#include <memory>
 #include "ppp_repeat.h++"
 #include "pvec.h++"
 
@@ -31,14 +32,48 @@
 #define ITERATIONS 8
 #define N 128
 #define WARMUP_COUNT 256
-#define BENCHMARK_COUNT 256
+#define BENCHMARK_COUNT 512
 #define DELTA (0.00001)
 
 /* These parameters are used to tune the fast implementation and
  * therefor should be used by some sort of auto-tuner. */
+
+/* The length (in doubles) of the vector registers to use. */
 #ifndef VECTOR_LENGTH
-#define VECTOR_LENGTH 8
+#define VECTOR_LENGTH 4
 #endif
+
+/* The alignment (in bytes) of the matrix. */
+#ifndef VECTOR_ALIGNMENT
+#define VECTOR_ALIGNMENT 256
+#endif
+
+/* I have some explicit SIMD code, this makes sure that abides by
+ * the VECTOR_LENGTH constant. */
+typedef double vector __attribute__(( vector_size(VECTOR_LENGTH * 8) ));
+
+/* The vector initializer in GCC in odd, this allows me to initailize
+ * vectors in a sane way. */
+#define PSIMD_INIT_ONE(N, P) P,
+#define PSIMD_INIT(N, V) { PPPR(N, PSIMD_INIT_ONE, V) }
+
+/* Apparently some GCC versions don't have std::align?  This is from
+ * gcc/libstdc++-v3/include/std/memory. */
+template<class T>
+inline T*
+align(size_t __align, size_t __size, T*& __ptr, size_t& __space) noexcept
+{
+    const auto __intptr = reinterpret_cast<uintptr_t>(__ptr);
+    const auto __aligned = (__intptr - 1u + __align) & -__align;
+    const auto __diff = __aligned - __intptr;
+    if ((__size + __diff) > __space)
+        return nullptr;
+    else
+    {
+        __space -= __diff;
+        return __ptr = reinterpret_cast<T*>(__aligned);
+    }
+}
 
 /* The simplest matrix multiplication implementation I can think of
  * that's reasonably performant -- note that GCC appears to vectorize
@@ -69,7 +104,7 @@ void simple_matmul(double * __restrict__ C,
 {
     for (auto i = 0*N; i < N; ++i) {
         for (auto j = 0*N; j < N; ++j) {
-            double cC = 0;
+            double cC(0);
 
             for (auto k = 0*N; k < N; ++k) {
                 double cA = A[i*N + k];
@@ -83,7 +118,9 @@ void simple_matmul(double * __restrict__ C,
 }
 
 /* This implementation was designed to provide exactly the same
- * results as 
+ * results as the above implementation after GCC vectorizes the J
+ * loop, but it appears this doesn't actually work -- essentially what
+ * ends up happening is that GCC unrolls the K loop 
  *
  * The inner kernel is now as follows (with -DVECTOR_LENGTH=4)
 
@@ -98,9 +135,10 @@ void simple_matmul(double * __restrict__ C,
       cmp    %rcx,%r8
       jne    k_loop
 
+ * 
  */
 __attribute__((noinline))
-void matmul_vector_j(double * __restrict__ C,
+void matmul_pvec_j(double * __restrict__ C,
                      const double * __restrict__ A,
                      const double * __restrict__ B)
 {
@@ -109,12 +147,36 @@ void matmul_vector_j(double * __restrict__ C,
             pvec<double, VECTOR_LENGTH> cC(0.0);
 
             for (auto k = 0*N; k < N; ++k) {
-                pvec<double, VECTOR_LENGTH> cA(A[i*N + k]);
+                double cA = A[i*N + k];
                 pvec<double, VECTOR_LENGTH> cB(B + k*N + j);
                 cC += cA * cB;
             }
 
             cC.store(C + i*N + j);
+        }
+    }
+}
+
+/* This implementation attempts to produce exactly the same result as
+ * the original simple_matmul as auto-vectorized by GCC, but by
+ * explicitly using vector intrinsics.  This appears to work
+ * everywhere. */
+__attribute__((noinline))
+void matmul_simd_j(double * __restrict__ C,
+                   const double * __restrict__ A,
+                   const double * __restrict__ B)
+{
+    for (auto i = 0*N; i < N; ++i) {
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH) {
+            vector cC = PSIMD_INIT(VECTOR_LENGTH, 0);
+
+            for (auto k = 0*N; k < N; ++k) {
+                vector cA = PSIMD_INIT(VECTOR_LENGTH, A[i*N + k]);
+                vector cB = *((vector*)(B + k*N + j));
+                cC += cA * cB;
+            }
+
+            *((vector*)(C + i*N + j)) = cC;
         }
     }
 }
@@ -145,19 +207,25 @@ void benchmark(const double *a, const double *b, double *fast,
         std::cout << name << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0 * 1e9) << "\n";
     }
 
-    for (auto i = 0*N*N; i < N*N; ++i)
-        if (fabs(gold[i] - fast[i]) > DELTA)
+    for (auto i = 0*N*N; i < N*N; ++i) {
+        if (fabs(gold[i] - fast[i]) > DELTA) {
+            fprintf(stderr, "%d: %f != %f\n", i, gold[i], fast[i]);
             abort();
+        }
+    }
 }
 
 int main(int argc __attribute__((unused)),
          char **argv __attribute__((unused)))
 {
-    double *a = new double[N*N];
-    double *b = new double[N*N];
-    double *c = new double[N*N];
-
-    double *gold = new double[N*N];
+    size_t matrix_size = N*N;
+    size_t buffer_size = (matrix_size + 2*VECTOR_ALIGNMENT)*4;
+    double *buffer = new double[buffer_size];
+    
+    double *a = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
+    double *b = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
+    double *c = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
+    double *gold = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
 
     srand(0);
 
@@ -171,8 +239,9 @@ int main(int argc __attribute__((unused)),
 
         simple_matmul(gold, a, b);
 
-        benchmark(a, b, c, gold, &simple_matmul,   "Simple:   ");
-        benchmark(a, b, c, gold, &matmul_vector_j, "Vector J: ");
+        benchmark(a, b, c, gold, &simple_matmul, "simple: ");
+        benchmark(a, b, c, gold, &matmul_pvec_j, "pvec J: ");
+        benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
     }
 
     return 0;

@@ -47,9 +47,9 @@ public:
     }
 
 public:
-    void store(T *base) {
+    void store(T *base, size_t stride=1) {
         for (auto i = 0*N; i < N; ++i)
-            base[i] = _data[i];
+            base[i] = _data[i*stride];
     }
 };
 
@@ -58,6 +58,22 @@ pvec<T, N> operator*(const pvec<T, N>& a, const pvec<T, N>& b) {
     T out[N];
     for (auto i = 0*N; i < N; ++i)
         out[i] = a[i] * b[i];
+    return pvec<T, N>(out);
+}
+
+template<class T, int N>
+pvec<T, N> operator*(const T& a, const pvec<T, N>& b) {
+    T out[N];
+    for (auto i = 0*N; i < N; ++i)
+        out[i] = a * b[i];
+    return pvec<T, N>(out);
+}
+
+template<class T, int N>
+pvec<T, N> operator*(const pvec<T, N>& a, const T& b) {
+    T out[N];
+    for (auto i = 0*N; i < N; ++i)
+        out[i] = a[i] * b;
     return pvec<T, N>(out);
 }
 
