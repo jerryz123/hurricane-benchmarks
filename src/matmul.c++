@@ -24,6 +24,7 @@
 #include <math.h>
 #include <valarray>
 #include <memory>
+#include <random>
 #include "ppp_repeat.h++"
 
 /* These parameters need to be fixed in order to get consistent
@@ -200,14 +201,13 @@ int main(int argc __attribute__((unused)),
     auto c = aligned_array<double>(N*N, VECTOR_ALIGNMENT);
     auto gold = aligned_array<double>(N*N, VECTOR_ALIGNMENT);
 
-    srand(0);
+    std::uniform_real_distribution<double> unif(-1.0, 1.0);
+    std::default_random_engine re;
 
     for (auto iter = 0*ITERATIONS; iter < ITERATIONS; ++iter) {
-        for (auto i = 0*N; i < N; ++i) {
-            for (auto j = 0*N; j < N; ++j) {
-                a[i*N + j] = rand() / 1000.0;
-                b[i*N + j] = rand() / 1000.0;
-            }
+        for (auto i = 0*N*N; i < N*N; ++i) {
+            a[i] = unif(re);
+            b[i] = unif(re);
         }
 
         simple_matmul(gold, a, b);
