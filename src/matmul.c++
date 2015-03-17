@@ -22,7 +22,9 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
+#include <valarray>
 #include "ppp_repeat.h++"
+#include "pvec.h++"
 
 /* These parameters need to be fixed in order to get consistent
  * results between the different platforms. */
@@ -34,7 +36,9 @@
 
 /* These parameters are used to tune the fast implementation and
  * therefor should be used by some sort of auto-tuner. */
-#define BLOCK_VERT 4
+#ifndef VECTOR_LENGTH
+#define VECTOR_LENGTH 8
+#endif
 
 /* The simplest matrix multiplication implementation I can think of
  * that's reasonably performant -- note that GCC appears to vectorize
@@ -58,6 +62,7 @@
 
  * Which provides 4 FMAs every 5 loads (4x reuse on A, 1x on B)
  */
+__attribute__((noinline))
 void simple_matmul(double * __restrict__ C,
                    const double * __restrict__ A,
                    const double * __restrict__ B)
@@ -77,21 +82,39 @@ void simple_matmul(double * __restrict__ C,
     }
 }
 
-void fast_matmul(double * __restrict__ C,
-                 const double * __restrict__ A,
-                 const double * __restrict__ B)
+/* This implementation was designed to provide exactly the same
+ * results as 
+ *
+ * The inner kernel is now as follows (with -DVECTOR_LENGTH=4)
+
+    k_loop:
+      vmovsd (%rcx),%xmm0
+      add    $0x8,%rcx
+      add    $0x400,%rax
+      vfmadd231sd -0x400(%rax),%xmm0,%xmm1
+      vfmadd231sd -0x3f8(%rax),%xmm0,%xmm2
+      vfmadd231sd -0x3f0(%rax),%xmm0,%xmm3
+      vfmadd231sd -0x3e8(%rax),%xmm0,%xmm4
+      cmp    %rcx,%r8
+      jne    k_loop
+
+ */
+__attribute__((noinline))
+void matmul_vector_j(double * __restrict__ C,
+                     const double * __restrict__ A,
+                     const double * __restrict__ B)
 {
     for (auto i = 0*N; i < N; ++i) {
-        for (auto j = 0*N; j < N; ++j) {
-            double cC = 0;
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH) {
+            pvec<double, VECTOR_LENGTH> cC(0.0);
 
             for (auto k = 0*N; k < N; ++k) {
-                double cA = A[i*N + k];
-                double cB = B[k*N + j];
+                pvec<double, VECTOR_LENGTH> cA(A[i*N + k]);
+                pvec<double, VECTOR_LENGTH> cB(B + k*N + j);
                 cC += cA * cB;
             }
 
-            C[i*N + j] = cC;
+            cC.store(C + i*N + j);
         }
     }
 }
@@ -148,8 +171,8 @@ int main(int argc __attribute__((unused)),
 
         simple_matmul(gold, a, b);
 
-        benchmark(a, b, c, gold, &simple_matmul, "Simple: ");
-        benchmark(a, b, c, gold, &fast_matmul,   "Fast:   ");
+        benchmark(a, b, c, gold, &simple_matmul,   "Simple:   ");
+        benchmark(a, b, c, gold, &matmul_vector_j, "Vector J: ");
     }
 
     return 0;

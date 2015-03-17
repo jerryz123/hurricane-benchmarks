@@ -1,4 +1,7 @@
-LANGUAGES += c++
+LANGUAGES  += c++
+#COMPILER = clang++
+
+LANGUAGES   += c++
 COMPILEOPTS += -std=c++11
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Wextra
@@ -9,9 +12,6 @@ LANGUAGES   += c++
 COMPILEOPTS += -O3
 COMPILEOPTS += -march=native
 LINKOPTS    += -Wl,-O1
-COMPILEOPTS += -ftree-vectorize
-COMPILEOPTS += -fno-inline
-COMPILEOPTS += -fno-unroll-loops
 
 LANGUAGES   += c++
 COMPILEOPTS += -g
