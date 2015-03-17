@@ -59,19 +59,12 @@ typedef double vector __attribute__(( vector_size(VECTOR_LENGTH * 8) ));
 /* Apparently some GCC versions don't have std::align?  This is from
  * gcc/libstdc++-v3/include/std/memory. */
 template<class T>
-inline T*
-align(size_t __align, size_t __size, T*& __ptr, size_t& __space) noexcept
+T* aligned_array(size_t count, size_t byte_alignment)
 {
-    const auto __intptr = reinterpret_cast<uintptr_t>(__ptr);
-    const auto __aligned = (__intptr - 1u + __align) & -__align;
-    const auto __diff = __aligned - __intptr;
-    if ((__size + __diff) > __space)
-        return nullptr;
-    else
-    {
-        __space -= __diff;
-        return __ptr = reinterpret_cast<T*>(__aligned);
-    }
+    auto alloc = new T[count + byte_alignment*2];
+    auto ialloc = reinterpret_cast<uintptr_t>(alloc);
+    ialloc = ialloc - (ialloc % byte_alignment) + byte_alignment;
+    return reinterpret_cast<T*>(ialloc);
 }
 
 /* The simplest matrix multiplication implementation I can think of
@@ -202,14 +195,10 @@ void benchmark(const double *a, const double *b, double *fast,
 int main(int argc __attribute__((unused)),
          char **argv __attribute__((unused)))
 {
-    size_t matrix_size = N*N;
-    size_t buffer_size = (matrix_size + 2*VECTOR_ALIGNMENT)*4;
-    double *buffer = new double[buffer_size];
-    
-    double *a = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
-    double *b = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
-    double *c = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
-    double *gold = align(VECTOR_ALIGNMENT, matrix_size, buffer, buffer_size);
+    auto a = aligned_array<double>(N*N, VECTOR_ALIGNMENT);
+    auto b = aligned_array<double>(N*N, VECTOR_ALIGNMENT);
+    auto c = aligned_array<double>(N*N, VECTOR_ALIGNMENT);
+    auto gold = aligned_array<double>(N*N, VECTOR_ALIGNMENT);
 
     srand(0);
 
