@@ -26,7 +26,7 @@
 template<class T, int N> class pvec {
 private:
     struct array_type {
-        T data[N] __attribute__(( aligned(sizeof(T) * N) ));
+        T data[N];
     };
 
     struct array_type _data;

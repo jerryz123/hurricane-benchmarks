@@ -147,7 +147,7 @@ void matmul_pvec_j(double * __restrict__ C,
             pvec<double, VECTOR_LENGTH> cC(0.0);
 
             for (auto k = 0*N; k < N; ++k) {
-                double cA = A[i*N + k];
+                pvec<double, VECTOR_LENGTH> cA(A[i*N + k]);
                 pvec<double, VECTOR_LENGTH> cB(B + k*N + j);
                 cC += cA * cB;
             }
