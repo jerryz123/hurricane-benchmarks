@@ -239,6 +239,14 @@ void matmul_regblk(double * __restrict__ C,
       cmp    %rax,%rsi
       jne    k_loop
 
+ * The problem appears to be twofold:
+ *
+ * - vfmadd???pd M,Y,Y gets split into two micro-ops, which I believe
+ *   means that we can only issue one per cycle (to the two vector
+ *   units).
+ *
+ * - This appears to have cache problems?  Though I'm not actually
+ *   sure about that...
  */
 __attribute__((noinline))
 void matmul_multij(double * __restrict__ C,
