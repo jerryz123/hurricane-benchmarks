@@ -95,7 +95,11 @@ align(size_t __align, size_t __size, T*& __ptr, size_t& __space) noexcept
        vfmadd231pd %ymm1,%ymm2,%ymm0
        jne    k_loop
 
- * Which provides 4 FMAs every 5 loads (4x reuse on A, 1x on B)
+ * Which provides 4 FMAs every 5 loads (4x reuse on A, 1x on B).
+ *
+ * Note that LLVM doesn't appear to be able to vectorize this loop at
+ * all -- possibly because it doesn't know to emit unaligned memory
+ * instructions here?
  */
 __attribute__((noinline))
 void simple_matmul(double * __restrict__ C,
@@ -159,8 +163,28 @@ void matmul_pvec_j(double * __restrict__ C,
 
 /* This implementation attempts to produce exactly the same result as
  * the original simple_matmul as auto-vectorized by GCC, but by
- * explicitly using vector intrinsics.  This appears to work
- * everywhere. */
+ * explicitly using vector intrinsics.  This appears to emit good code
+ * on both GCC and LLVM, and has the advantage of getting rid of the
+ * unaligned store.  LLVM has significantly higher performance here
+ * because it unrolls the K loop into two operations as follows:
+ *
+
+    k_loop:
+      vbroadcastsd -0x8(%rcx),%ymm1
+      lea    (%rdx,%rax,1),%r11
+      vmulpd -0x400(%r11,%r10,8),%ymm1,%ymm1
+      vaddpd %ymm1,%ymm0,%ymm0
+      vbroadcastsd (%rcx),%ymm1
+      vmulpd (%r11,%r10,8),%ymm1,%ymm1
+      vaddpd %ymm1,%ymm0,%ymm0
+      add    $0x800,%rax
+      add    $0x10,%rcx
+      cmp    $0x20000,%rax
+      jne    k_loop
+
+ * which provides 8 FMAs for every 10 loads (4x reuse on A, 1x on B)
+ * -- the higher throughput comes from doubling the FMAs per branch.
+ */
 __attribute__((noinline))
 void matmul_simd_j(double * __restrict__ C,
                    const double * __restrict__ A,
