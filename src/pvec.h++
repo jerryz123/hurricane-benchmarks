@@ -24,11 +24,12 @@
 #define PVEC_HXX
 
 template<class T, int N> class pvec {
-private:
+public:
     struct array_type {
-        T data[N];
+        T data[N] __attribute__(( aligned(32) ));
     };
 
+private:
     struct array_type _data;
 
 public:
@@ -41,14 +42,17 @@ public:
         *((struct array_type *)&_data) = *((struct array_type *)base);
     }
 
+    pvec(const pvec<T, N>& other) {
+        *((struct array_type *)&_data) = *((struct array_type *)&other._data);
+    }
+
 public:
     const T& operator[](size_t i) const {
         return _data.data[i];
     }
 
-    void operator+=(const pvec<T, N>& other) {
-        for (auto i = 0*N; i < N; ++i)
-            _data.data[i] += other[i];
+    T& operator[](size_t i) {
+        return _data.data[i];
     }
 
 public:
@@ -59,26 +63,33 @@ public:
 
 template<class T, int N>
 pvec<T, N> operator*(const pvec<T, N>& a, const pvec<T, N>& b) {
-    T out[N];
+    typename pvec<T, N>::array_type out;
     for (auto i = 0*N; i < N; ++i)
-        out[i] = a[i] * b[i];
-    return pvec<T, N>(out);
+        out.data[i] = a[i] * b[i];
+    return pvec<T, N>(out.data);
 }
 
 template<class T, int N>
 pvec<T, N> operator*(const T& a, const pvec<T, N>& b) {
-    T out[N];
+    typename pvec<T, N>::array_type out;
     for (auto i = 0*N; i < N; ++i)
-        out[i] = a * b[i];
-    return pvec<T, N>(out);
+        out.data[i] = a * b[i];
+    return pvec<T, N>(out.data);
 }
 
 template<class T, int N>
 pvec<T, N> operator*(const pvec<T, N>& a, const T& b) {
-    T out[N];
+    typename pvec<T, N>::array_type out;
     for (auto i = 0*N; i < N; ++i)
-        out[i] = a[i] * b;
-    return pvec<T, N>(out);
+        out.data[i] = a[i] * b;
+    return pvec<T, N>(out.data);
+}
+
+template<class T, int N>
+pvec<T, N> operator+=(pvec<T, N>& a, const pvec<T, N>& b) {
+    for (auto i = 0*N; i < N; ++i)
+        a[i] += b[i];
+    return a;
 }
 
 #endif
