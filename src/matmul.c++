@@ -33,7 +33,7 @@
 #define N 128
 #define WARMUP_COUNT 256
 #define BENCHMARK_COUNT 512
-#define DELTA (0.00001)
+#define DELTA (1e-15)
 
 /* These parameters are used to tune the fast implementation and
  * therefor should be used by some sort of auto-tuner. */
