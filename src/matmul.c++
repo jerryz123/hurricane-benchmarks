@@ -57,6 +57,10 @@
 #define REGISTER_BLOCK 8
 #endif
 
+#ifndef VECTOR_COUNT
+#define VECTOR_COUNT 4
+#endif
+
 /* I have some explicit SIMD code, this makes sure that abides by
  * the VECTOR_LENGTH constant. */
 typedef double vector __attribute__(( vector_size(VECTOR_LENGTH * 8) ));
@@ -216,6 +220,51 @@ void matmul_regblk(double * __restrict__ C,
     }
 }
 
+/* This implementation was designed to work around the fact that Intel
+ * doesn't have scalar-vector operations.  It generates code that
+ * looks like the following (for -DVECTOR_COUNT=4).  While I would
+ * expect this to get better performance, it actually seems to top out
+ * at about a quarter of the IPC of matmul_regblock() -- I can only
+ * assume this is happening for cache reasons?
+ *
+
+    k_loop:
+      vbroadcastsd (%rcx),%ymm0
+      add    $0x400,%rax
+      add    $0x8,%rcx
+      vfmadd231pd -0x400(%rax),%ymm0,%ymm1
+      vfmadd231pd -0x3e0(%rax),%ymm0,%ymm2
+      vfmadd231pd -0x3c0(%rax),%ymm0,%ymm3
+      vfmadd231pd -0x3a0(%rax),%ymm0,%ymm4
+      cmp    %rax,%rsi
+      jne    k_loop
+
+ */
+__attribute__((noinline))
+void matmul_multij(double * __restrict__ C,
+                   const double * __restrict__ A,
+                   const double * __restrict__ B)
+{
+    for (auto i = 0*N; i < N; ++i) {
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH*VECTOR_COUNT) {
+            vector cC[VECTOR_COUNT];
+            for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v)
+                cC[v] = vector PSIMD_INIT(VECTOR_LENGTH, 0);
+
+            for (auto k = 0*N; k < N; ++k) {
+                for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v) {
+                    vector cA = PSIMD_INIT(VECTOR_LENGTH, A[i*N + k]);
+                    vector cB = *((vector*)(B + k*N + (j+v*VECTOR_LENGTH)));
+                    cC[v] += cA * cB;
+                }
+            }
+
+            for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v)
+                *((vector*)(C + i*N + (j+v*VECTOR_LENGTH))) = cC[v];
+        }
+    }
+}
+
 void benchmark(const double *a, const double *b, double *fast,
                const double *gold,
                void (*func)(double *c, const double *a, const double *b),
@@ -281,6 +330,7 @@ int main(int argc __attribute__((unused)),
         benchmark(a, b, c, gold, &simple_matmul, "simple: ");
         benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
         benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
+        benchmark(a, b, c, gold, &matmul_multij, "multij: ");
     }
 
     return 0;
