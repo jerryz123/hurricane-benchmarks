@@ -11,6 +11,7 @@ COMPILEOPTS += -march=native
 LINKOPTS    += -Wl,-O1
 COMPILEOPTS += -ftree-vectorize
 COMPILEOPTS += -fno-inline
+COMPILEOPTS += -fno-unroll-loops
 
 LANGUAGES   += c++
 COMPILEOPTS += -g

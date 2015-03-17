@@ -37,11 +37,28 @@
 #define K_LOOP_UNROLL 4
 #define BLOCK_HORIZ 4
 
-//static void simple_matmul(double *C, const double *A, const double *B);
-
 /* The simplest matrix multiplication implementation I can think of
  * that's reasonably performant -- note that GCC appears to vectorize
- * this for me */
+ * this for me as follows:
+ *
+ * - A single YMM register is loaded from columns of B
+ * - A single YMM register is loaded from a scalar from A (via
+ *   vbroadcast)
+ * - A single YMM register is accumulated into to make columns of C
+ *
+ * The inner kernel is as follows:
+
+    k_loop:
+       vbroadcastsd (%rcx),%ymm2
+       add    $0x400,%rax
+       add    $0x8,%rcx
+       vmovupd -0x400(%rax),%ymm1
+       cmp    %rsi,%rax
+       vfmadd231pd %ymm1,%ymm2,%ymm0
+       jne    k_loop
+
+ * Which provides 4 FMAs every 5 loads (4x reuse on A, 1x on B)
+ */
 void simple_matmul(double * __restrict__ C,
                    const double * __restrict__ A,
                    const double * __restrict__ B)
