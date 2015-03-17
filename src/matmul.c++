@@ -166,6 +166,27 @@ void matmul_simd_j(double * __restrict__ C,
     }
 }
 
+/* This implementation performs register blocking to get both better
+ * reuse and more FMAs per branch.  The code now looks something
+ * like the following (with -DREGISTER_BLOCK=2)
+ *
+
+    k_loop:
+      vmovapd (%rcx),%ymm0
+      add    $0x8,%rax
+      add    $0x400,%rcx
+      vbroadcastsd -0x8(%rax),%ymm3
+      vfmadd231pd %ymm0,%ymm3,%ymm1
+      vbroadcastsd 0x3f8(%rax),%ymm3
+      vfmadd231pd %ymm0,%ymm3,%ymm2
+      cmp    %rax,%r8
+      jne    k_loop
+
+ * I believe the reason this isn't efficient is the fact that those
+ * vbroadcast operations are sitting in there -- essentially this
+ * means I can't get my 2 FLOPS per cycle from FMA, because the cycle
+ * before I'm doing a 0-FLOP operation.
+ */
 __attribute__((noinline))
 void matmul_regblk(double * __restrict__ C,
                    const double * __restrict__ A,
