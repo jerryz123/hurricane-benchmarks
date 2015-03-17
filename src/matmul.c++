@@ -97,13 +97,42 @@ void fast_matmul(double * __restrict__ C,
     }
 }
 
+void benchmark(double *a, double *b,
+               double *fast, double *gold,
+               void (*func)(double *c, const double *a, const double *b))
+{
+
+    for (auto i = 0*WARMUP_COUNT; i < WARMUP_COUNT; ++i)
+        func(fast, a, b);
+
+    {
+        std::chrono::high_resolution_clock clock;
+
+        auto start = clock.now();
+
+        for (auto i = 0*BENCHMARK_COUNT; i < BENCHMARK_COUNT; ++i)
+            func(fast, a, b);
+
+        auto stop = clock.now();
+
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+
+        std::cout << "Fast:   " << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0) << "\n";
+    }
+
+    for (size_t i = 0; i < N*N; ++i)
+        if (fabs(gold[i] - fast[i]) > DELTA)
+            abort();
+}
+
 int main(int argc __attribute__((unused)),
          char **argv __attribute__((unused)))
 {
     double *a = new double[N*N];
     double *b = new double[N*N];
+    double *c = new double[N*N];
+
     double *gold = new double[N*N];
-    double *fast = new double[N*N];
 
     srand(0);
 
@@ -115,45 +144,10 @@ int main(int argc __attribute__((unused)),
             }
         }
 
-        for (auto i = 0*WARMUP_COUNT; i < WARMUP_COUNT; ++i)
-            simple_matmul(gold, a, b);
+        simple_matmul(gold, a, b);
 
-        {
-            std::chrono::high_resolution_clock clock;
-
-            auto start = clock.now();
-
-            for (auto i = 0*BENCHMARK_COUNT; i < BENCHMARK_COUNT; ++i)
-                simple_matmul(gold, a, b);
-
-            auto stop = clock.now();
-
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-
-            std::cout << "Simple: " << (1.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0) << "\n";
-        }
-
-        for (auto i = 0*WARMUP_COUNT; i < WARMUP_COUNT; ++i)
-            fast_matmul(fast, a, b);
-
-        {
-            std::chrono::high_resolution_clock clock;
-
-            auto start = clock.now();
-
-            for (auto i = 0*BENCHMARK_COUNT; i < BENCHMARK_COUNT; ++i)
-                fast_matmul(fast, a, b);
-
-            auto stop = clock.now();
-
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-
-            std::cout << "Fast:   " << (1.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0) << "\n";
-        }
-
-        for (size_t i = 0; i < N*N; ++i)
-            if (fabs(gold[i] - fast[i]) > DELTA)
-                abort();
+        benchmark(a, b, c, gold, &simple_matmul);
+        benchmark(a, b, c, gold, &fast_matmul);
     }
 
     return 0;
