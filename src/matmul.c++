@@ -185,12 +185,21 @@ void benchmark(const double *a, const double *b, double *fast,
         std::cout << name << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0 * 1e9) << "\n";
     }
 
+    bool fail = false;
     for (auto i = 0*N*N; i < N*N; ++i) {
+        if (std::isnan(fast[i]) || std::isinf(fast[i])) {
+            fprintf(stderr, "%d: NAN %f %f\n", i, gold[i], fast[i]);
+            fail = true;
+        }
+
         if (fabs(gold[i] - fast[i]) > DELTA) {
             fprintf(stderr, "%d: %f != %f\n", i, gold[i], fast[i]);
-            abort();
+            fail = true;
         }
     }
+
+    if (fail)
+        abort();
 }
 
 int main(int argc __attribute__((unused)),
