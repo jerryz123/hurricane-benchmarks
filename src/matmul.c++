@@ -99,7 +99,8 @@ align(size_t __align, size_t __size, T*& __ptr, size_t& __space) noexcept
  *
  * Note that LLVM doesn't appear to be able to vectorize this loop at
  * all -- possibly because it doesn't know to emit unaligned memory
- * instructions here?
+ * instructions here?  The alignment of C isn't known, so GCC emits a
+ * maybe-unaligned store of cC in the J loop.
  */
 __attribute__((noinline))
 void simple_matmul(double * __restrict__ C,
