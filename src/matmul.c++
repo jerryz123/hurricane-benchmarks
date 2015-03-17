@@ -101,6 +101,8 @@ void benchmark(const double *a, const double *b, double *fast,
                void (*func)(double *c, const double *a, const double *b),
                const char *name)
 {
+    for (auto i = 0*N*N; i < N*N; ++i)
+        fast[i] = -1.0/0.0;
 
     for (auto i = 0*WARMUP_COUNT; i < WARMUP_COUNT; ++i)
         func(fast, a, b);
@@ -120,7 +122,7 @@ void benchmark(const double *a, const double *b, double *fast,
         std::cout << name << (2.0*N*N*N*BENCHMARK_COUNT) / (duration / 1000.0 * 1e9) << "\n";
     }
 
-    for (size_t i = 0; i < N*N; ++i)
+    for (auto i = 0*N*N; i < N*N; ++i)
         if (fabs(gold[i] - fast[i]) > DELTA)
             abort();
 }
