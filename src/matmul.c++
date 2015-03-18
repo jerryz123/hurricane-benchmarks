@@ -26,13 +26,14 @@
 #include <memory>
 #include <random>
 #include "ppp_repeat.h++"
+#include <mkl.h>
 
 /* These parameters need to be fixed in order to get consistent
  * results between the different platforms. */
 #define ITERATIONS 8
 #define N 128
 #define WARMUP_COUNT 256
-#define BENCHMARK_COUNT 512
+#define BENCHMARK_COUNT 1024
 #define DELTA (1e-15)
 
 /* These parameters are used to tune the fast implementation and
@@ -274,32 +275,12 @@ void matmul_multij(double * __restrict__ C,
 }
 
 __attribute__((noinline))
-void matmul_rect(double * __restrict__ C,
+void matmul_mkl(double * __restrict__ C,
                  const double * __restrict__ A,
                  const double * __restrict__ B)
 {
-    for (auto i = 0*N; i < N; ++i) {
-        for (auto j = 0*N; j < N; j += VECTOR_LENGTH*VECTOR_COUNT) {
-            vector cC[VECTOR_COUNT][REGISTER_BLOCK];
-            for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v)
-                for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b)
-                    cC[v][b] = vector PSIMD_INIT(VECTOR_LENGTH, 0);
-
-            for (auto k = 0*N; k < N; ++k) {
-                for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v) {
-                    for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b) {
-                        vector cA = PSIMD_INIT(VECTOR_LENGTH, A[(i+b)*N + k]);
-                        vector cB = *((vector*)(B + k*N + (j+v*VECTOR_LENGTH)));
-                        cC[v][b] += cA * cB;
-                    }
-                }
-            }
-
-            for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v)
-                for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b)
-                    *((vector*)(C + (i+b)*N + (j+v*VECTOR_LENGTH))) = cC[v][b];
-        }
-    }
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 
+                N, N, N, 1.0, A, N, B, N, 0.0, C, N);
 }
 
 void benchmark(const double *a, const double *b, double *fast,
@@ -364,11 +345,15 @@ int main(int argc __attribute__((unused)),
 
         simple_matmul(gold, a, b);
 
+#if 1
         benchmark(a, b, c, gold, &simple_matmul, "simple: ");
         benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
         benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
         benchmark(a, b, c, gold, &matmul_multij, "multij: ");
-        benchmark(a, b, c, gold, &matmul_rect,   "rect:   ");
+        benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
+#else
+        benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
+#endif        
     }
 
     return 0;

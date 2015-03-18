@@ -21,4 +21,6 @@ BINARIES    += micro-vfmadd231pdMYY
 SOURCES     += micro-vfmadd231pdMYY.c++
 
 BINARIES    += matmul
+COMPILEOPTS += `ppkg-config cblas --cflags`
+LINKOPTS    += `ppkg-config cblas --libs`
 SOURCES     += matmul.c++
