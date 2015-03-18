@@ -273,6 +273,35 @@ void matmul_multij(double * __restrict__ C,
     }
 }
 
+__attribute__((noinline))
+void matmul_rect(double * __restrict__ C,
+                 const double * __restrict__ A,
+                 const double * __restrict__ B)
+{
+    for (auto i = 0*N; i < N; ++i) {
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH*VECTOR_COUNT) {
+            vector cC[VECTOR_COUNT][REGISTER_BLOCK];
+            for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v)
+                for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b)
+                    cC[v][b] = vector PSIMD_INIT(VECTOR_LENGTH, 0);
+
+            for (auto k = 0*N; k < N; ++k) {
+                for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v) {
+                    for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b) {
+                        vector cA = PSIMD_INIT(VECTOR_LENGTH, A[(i+b)*N + k]);
+                        vector cB = *((vector*)(B + k*N + (j+v*VECTOR_LENGTH)));
+                        cC[v][b] += cA * cB;
+                    }
+                }
+            }
+
+            for (auto v = 0*VECTOR_COUNT; v < VECTOR_COUNT; ++v)
+                for (auto b = 0*REGISTER_BLOCK; b < REGISTER_BLOCK; ++b)
+                    *((vector*)(C + (i+b)*N + (j+v*VECTOR_LENGTH))) = cC[v][b];
+        }
+    }
+}
+
 void benchmark(const double *a, const double *b, double *fast,
                const double *gold,
                void (*func)(double *c, const double *a, const double *b),
@@ -339,6 +368,7 @@ int main(int argc __attribute__((unused)),
         benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
         benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
         benchmark(a, b, c, gold, &matmul_multij, "multij: ");
+        benchmark(a, b, c, gold, &matmul_rect,   "rect:   ");
     }
 
     return 0;
