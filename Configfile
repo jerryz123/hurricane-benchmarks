@@ -20,17 +20,5 @@ GENERATE    += ppp_repeat.h++
 BINARIES    += micro-vfmadd231pdMYY
 SOURCES     += micro-vfmadd231pdMYY.c++
 
-LANGUAGES   += c++
-COMPILER     = g++-4.8.3
-BINARIES    += matmul-gcc48
-SOURCES     += matmul.c++
-
-LANGUAGES   += c++
-COMPILER     = g++-4.9.2
-BINARIES    += matmul-gcc49
-SOURCES     += matmul.c++
-
-LANGUAGES   += c++
-COMPILER     = clang++
-BINARIES    += matmul-clang
+BINARIES    += matmul
 SOURCES     += matmul.c++
