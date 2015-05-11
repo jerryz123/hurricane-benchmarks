@@ -20,6 +20,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <stdlib.h>
 #include "ppp_repeat.h++"
 
 #define LOOP_ITERATIONS (2ULL << 30)
@@ -29,6 +30,7 @@
 __attribute__((noinline))
 void benchmark(void)
 {
+#ifdef __amd64__
     double vector[LOOP_UNROLLING] __attribute__(( vector_size(4 * sizeof(double)) ));
 
     for (auto i = 0*LOOP_ITERATIONS; i < LOOP_ITERATIONS; ++i) {
@@ -43,6 +45,10 @@ void benchmark(void)
 
 #undef UNROLL
     }
+#else
+    std::cerr << "Only runs on Intel\n";
+    abort();
+#endif
 }
 
 int main(int argc __attribute__((unused)),

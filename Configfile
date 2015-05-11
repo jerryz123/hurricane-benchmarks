@@ -7,7 +7,7 @@ COMPILEOPTS += -Werror
 
 LANGUAGES   += c++
 COMPILEOPTS += -O3
-COMPILEOPTS += -march=native
+#COMPILEOPTS += -march=native
 LINKOPTS    += -Wl,-O1
 COMPILEOPTS += -ftree-vectorize
 

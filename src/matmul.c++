@@ -20,6 +20,7 @@
 
 #include <chrono>
 #include <stdlib.h>
+#include <stdio.h>
 #include <iostream>
 #include <math.h>
 #include <valarray>
