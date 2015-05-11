@@ -26,7 +26,10 @@
 #include <memory>
 #include <random>
 #include "ppp_repeat.h++"
+
+#ifdef HAVE_CBLAS
 #include <mkl.h>
+#endif
 
 /* These parameters need to be fixed in order to get consistent
  * results between the different platforms. */
@@ -274,6 +277,7 @@ void matmul_multij(double * __restrict__ C,
     }
 }
 
+#ifdef HAVE_CBLAS
 __attribute__((noinline))
 void matmul_mkl(double * __restrict__ C,
                  const double * __restrict__ A,
@@ -282,6 +286,7 @@ void matmul_mkl(double * __restrict__ C,
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 
                 N, N, N, 1.0, A, N, B, N, 0.0, C, N);
 }
+#endif
 
 void benchmark(const double *a, const double *b, double *fast,
                const double *gold,
@@ -350,7 +355,9 @@ int main(int argc __attribute__((unused)),
         benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
         benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
         benchmark(a, b, c, gold, &matmul_multij, "multij: ");
+#ifdef HAVE_CBLAS
         benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
+#endif
 #else
         benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
 #endif        
