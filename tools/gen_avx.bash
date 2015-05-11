@@ -1,5 +1,7 @@
 #!/bin/bash
 
+YMM_COUNT="16"
+
 cat <<EOF
 #ifndef LIBVECTOR__ARCH__AVX2__VREG_HXX
 #define LIBVECTOR__ARCH__AVX2__VREG_HXX
@@ -9,7 +11,7 @@ cat <<EOF
 namespace libvector {
 EOF
 
-for i in $(seq 0 7)
+for i in $(seq 0 $YMM_COUNT)
 do
     cat <<EOF
   template<> class vreg<double, 4, $i> {
@@ -27,13 +29,13 @@ do
       switch (ai) {
 EOF
 
-    for ai in $(seq 0 7)
+    for ai in $(seq 0 $YMM_COUNT)
     do
         cat <<EOF
       case $ai:
         switch (bi) {
 EOF
-        for bi in $(seq 0 7)
+        for bi in $(seq 0 $YMM_COUNT)
         do
             cat <<EOF
         case $bi:
