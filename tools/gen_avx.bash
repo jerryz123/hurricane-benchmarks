@@ -18,7 +18,7 @@ do
 
     vreg(double value) {
       assert(value == 0.0);
-      __asm__ volatile ("vxorpd %ymm0,%ymm0,%ymm0");
+      __asm__ volatile ("vxorpd %ymm$i,%ymm$i,%ymm$i");
     }
 
     template<int ai, int bi>
