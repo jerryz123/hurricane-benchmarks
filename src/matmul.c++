@@ -27,6 +27,7 @@
 #include <memory>
 #include <random>
 #include "ppp_repeat.h++"
+#include <libvector/vreg.h++>
 
 #ifdef HAVE_CBLAS
 #include <mkl.h>
@@ -38,7 +39,7 @@
 #define N 128
 #define WARMUP_COUNT 256
 #define BENCHMARK_COUNT 1024
-#define DELTA (1e-15)
+#define DELTA (1e-10)
 
 /* These parameters are used to tune the fast implementation and
  * therefor should be used by some sort of auto-tuner. */
@@ -289,6 +290,29 @@ void matmul_mkl(double * __restrict__ C,
 }
 #endif
 
+__attribute__((noinline))
+void matmul_libvector(double * __restrict__ C,
+                      const double * __restrict__ A,
+                      const double * __restrict__ B)
+{
+    for (auto i = 0*N; i < N; ++i) {
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH) {
+            libvector::vreg<double, VECTOR_LENGTH, 0> cC(0.0);
+
+            for (auto k = 0*N; k < N; k++) {
+                libvector::vreg<double, VECTOR_LENGTH, 1> cA;
+                libvector::vreg<double, VECTOR_LENGTH, 2> cB;
+
+                cA.splat(&A[i*N + k + 0]);
+                cB.load(&B[(k+0)*N + j]);
+                cC.fma(cA, cB);
+            }
+
+            cC.store(&C[i*N + j]);
+        }
+    }
+}
+
 void benchmark(const double *a, const double *b, double *fast,
                const double *gold,
                void (*func)(double *c, const double *a, const double *b),
@@ -351,17 +375,14 @@ int main(int argc __attribute__((unused)),
 
         simple_matmul(gold, a, b);
 
-#if 1
         benchmark(a, b, c, gold, &simple_matmul, "simple: ");
         benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
         benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
         benchmark(a, b, c, gold, &matmul_multij, "multij: ");
+        benchmark(a, b, c, gold, &matmul_libvector, "libvec: ");
 #ifdef HAVE_CBLAS
         benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
 #endif
-#else
-        benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
-#endif        
     }
 
     return 0;
