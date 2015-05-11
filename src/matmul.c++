@@ -291,9 +291,9 @@ void matmul_mkl(double * __restrict__ C,
 #endif
 
 __attribute__((noinline))
-void matmul_libvector(double * __restrict__ C,
-                      const double * __restrict__ A,
-                      const double * __restrict__ B)
+void matmul_libvector_simd_j(double * __restrict__ C,
+                             const double * __restrict__ A,
+                             const double * __restrict__ B)
 {
     for (auto i = 0*N; i < N; ++i) {
         for (auto j = 0*N; j < N; j += VECTOR_LENGTH) {
@@ -375,11 +375,11 @@ int main(int argc __attribute__((unused)),
 
         simple_matmul(gold, a, b);
 
-        benchmark(a, b, c, gold, &simple_matmul, "simple: ");
-        benchmark(a, b, c, gold, &matmul_simd_j, "SIMD J: ");
-        benchmark(a, b, c, gold, &matmul_regblk, "regblk: ");
-        benchmark(a, b, c, gold, &matmul_multij, "multij: ");
-        benchmark(a, b, c, gold, &matmul_libvector, "libvec: ");
+        benchmark(a, b, c, gold, &simple_matmul,           "simple:    ");
+        benchmark(a, b, c, gold, &matmul_simd_j,           "SIMD J:    ");
+        benchmark(a, b, c, gold, &matmul_regblk,           "regblk:    ");
+        benchmark(a, b, c, gold, &matmul_multij,           "multij:    ");
+        benchmark(a, b, c, gold, &matmul_libvector_simd_j, "LV SIMD J: ");
 #ifdef HAVE_CBLAS
         benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
 #endif
