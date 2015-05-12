@@ -313,6 +313,37 @@ void matmul_libvector_simd_j(double * __restrict__ C,
     }
 }
 
+__attribute__((noinline))
+void matmul_libvector_regblk(double * __restrict__ C,
+                             const double * __restrict__ A,
+                             const double * __restrict__ B)
+{
+    for (auto i = 0*N; i < N; i += REGISTER_BLOCK) {
+        for (auto j = 0*N; j < N; j += VECTOR_LENGTH) {
+#define REP(RB, P)                                       \
+            libvector::vreg<double, VECTOR_LENGTH, RB> cC_ ## RB(0.0);
+            PPPR(REGISTER_BLOCK, REP, REGISTER_BLOCK);
+#undef REP
+
+            for (auto k = 0*N; k < N; ++k) {
+                libvector::vreg<double, VECTOR_LENGTH, REGISTER_BLOCK+1> cA;
+                libvector::vreg<double, VECTOR_LENGTH, REGISTER_BLOCK+0> cB;
+                cB.load(&B[k*N + j]);
+#define REP(RB, P)                                                      \
+                cA.splat(&A[(i+RB)*N + k]);                             \
+                cC_ ## RB.fma(cA, cB);
+                PPPR(REGISTER_BLOCK, REP, REGISTER_BLOCK);
+#undef REP
+            }
+
+#define REP(B, P)                               \
+            cC_ ## B .store(&C[(i+B)*N + j]);
+            PPPR(REGISTER_BLOCK, REP, REGISTER_BLOCK);
+#undef REP
+        }
+    }
+}
+
 void benchmark(const double *a, const double *b, double *fast,
                const double *gold,
                void (*func)(double *c, const double *a, const double *b),
@@ -380,6 +411,7 @@ int main(int argc __attribute__((unused)),
         benchmark(a, b, c, gold, &matmul_regblk,           "regblk:    ");
         benchmark(a, b, c, gold, &matmul_multij,           "multij:    ");
         benchmark(a, b, c, gold, &matmul_libvector_simd_j, "LV SIMD J: ");
+        benchmark(a, b, c, gold, &matmul_libvector_regblk, "LV regblk: ");
 #ifdef HAVE_CBLAS
         benchmark(a, b, c, gold, &matmul_mkl,    "mkl:    ");
 #endif
