@@ -17,6 +17,9 @@ LINKOPTS    += -g
 
 GENERATE    += ppp_repeat.h++
 
+LANGUAGES   += c++
+COMPILEOPTS += -Isrc
+
 BINARIES    += micro-vfmadd231pdMYY
 SOURCES     += micro-vfmadd231pdMYY.c++
 
